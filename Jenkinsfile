@@ -19,33 +19,18 @@ pipeline {
         
         stage('Install Tools') {
             steps {
-                echo '🛠️ Installing required tools...'
-                
                 script {
-                    // Install Terraform
                     sh '''
-                        wget -O terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                        unzip terraform.zip
-                        chmod +x terraform
-                        sudo mv terraform /usr/local/bin/
-                        terraform version
-                    '''
-                    
-                    // Install Trivy for security scanning
-                    sh '''
-                        curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                        tar -xzf trivy_0.50.0_Linux-64bit.tar.gz
-                        chmod +x trivy
-                        sudo mv trivy /usr/local/bin/
-                        trivy --version
-                    '''
-                    
-                    // Install AWS CLI
-                    sh '''
-                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                        unzip awscliv2.zip
-                        sudo ./aws/install
-                        aws --version
+                        echo "Installing Unzip..."
+                        apt-get update && apt-get install -y unzip curl
+                        
+                        echo "Downloading Terraform..."
+                        curl -L -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                        
+                        echo "Extracting Terraform..."
+                        unzip -o terraform.zip
+                        mv terraform /usr/local/bin/
+                        terraform -version
                     '''
                 }
             }
