@@ -21,16 +21,20 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        echo "Installing Unzip..."
-                        apt-get update && apt-get install -y unzip curl
+                        echo "Updating and installing prerequisites..."
+                        apt-get update && apt-get install -y unzip curl gnupg
                         
-                        echo "Downloading Terraform..."
+                        echo "Installing Terraform..."
                         curl -L -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                        
-                        echo "Extracting Terraform..."
                         unzip -o terraform.zip
                         mv terraform /usr/local/bin/
+                        
+                        echo "Installing Trivy..."
+                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+                        
+                        echo "Verifying Installations..."
                         terraform -version
+                        trivy --version
                     '''
                 }
             }
