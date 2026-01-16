@@ -30,7 +30,7 @@ pipeline {
                         mv terraform /usr/local/bin/
                         
                         echo "Installing Trivy..."
-                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+                        curl -sfL --connect-timeout 30 --retry 5 https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
                         
                         echo "Verifying Installations..."
                         terraform -version
