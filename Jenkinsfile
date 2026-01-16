@@ -43,7 +43,7 @@ pipeline {
         stage('Security Scan - Terraform') {
             steps {
                 echo '🔍 Scanning Terraform for security vulnerabilities...'
-                dir('terraform') {
+                dir('.') {
                     script {
                         try {
                             // Scan with Trivy
@@ -68,7 +68,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 echo '📋 Running Terraform Plan...'
-                dir('terraform') {
+                dir('.') {
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding',
                         credentialsId: 'aws-credentials', // You'll create this in Jenkins
@@ -101,7 +101,7 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 echo '🚀 Applying Terraform...'
-                dir('terraform') {
+                dir('.') {
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding',
                         credentialsId: 'aws-credentials',
@@ -119,7 +119,7 @@ pipeline {
                 echo '✅ Verifying deployment...'
                 script {
                     // Get public IP from Terraform output
-                    dir('terraform') {
+                    dir('.') {
                         sh 'terraform output public_ip > ip.txt'
                         def public_ip = readFile('ip.txt').trim()
                         
