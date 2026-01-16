@@ -1,0 +1,39 @@
+# --- AWS & Secrets (CRITICAL) ---
+.aws/
+credentials
+*.pem
+*.key
+.env
+.env.*
+
+# --- Docker ---
+.docker/
+docker-compose.override.yml
+*.log
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Programming & Dependencies ---
+# Node.js (if applicable)
+node_modules/
+npm-debug.log*
+
+# Python (if applicable)
+__pycache__/
+*.py[cod]
+.venv/
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+
+# ---Terraform ---
+.terraform/
+terraform/
+*.tfstate
+*.exe
+*.zip
