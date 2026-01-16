@@ -33,7 +33,7 @@ pipeline {
                     
                     // Install Trivy for security scanning
                     sh '''
-                        wget https://github.com/aquasecurity/trivy/releases/download/v0.50.0/trivy_0.50.0_Linux-64bit.tar.gz
+                        curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
                         tar -xzf trivy_0.50.0_Linux-64bit.tar.gz
                         chmod +x trivy
                         sudo mv trivy /usr/local/bin/
