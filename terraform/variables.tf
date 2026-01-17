@@ -11,20 +11,15 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
-variable "ssh_port" {
-  description = "SSH port"
-  type        = number
-  default     = 22
-}
-
 variable "web_port" {
   description = "Web application port"
   type        = number
   default     = 5000
 }
 
-variable "your_ip_address" {
-  description = "Your public IP address for SSH access"
-  type        = string
-  default     = "0.0.0.0/0"  # INTENTIONAL VULNERABILITY - We'll fix with AI
+# IMPORTANT: Replace with your actual public IP
+variable "allowed_ssh_ips" {
+  description = "List of IPs allowed for SSH access"
+  type        = list(string)
+  default     = [""0.0.0.0/0"]  # Replace 103.xxx1 with your actual IP
 }

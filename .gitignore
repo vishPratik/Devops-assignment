@@ -37,3 +37,10 @@ __pycache__/
 *.exe
 *.zip
 .terraform.lock.hcl
+terraform.tfvars
+*.tfstate.*
+.terraform/
+terraform.tfstate.backup
+
+# Sensitive data
+secrets.*
