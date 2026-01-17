@@ -17,9 +17,15 @@ variable "web_port" {
   default     = 5000
 }
 
+variable "admin_ip" {
+  description = "Public IP allowed for SSH and HTTP access"
+  type        = string
+}
+
+
 # IMPORTANT: Replace with your actual public IP
 variable "allowed_ssh_ips" {
   description = "List of IPs allowed for SSH access"
   type        = list(string)
-  default     = [""0.0.0.0/0"]  # Replace 103.xxx1 with your actual IP
+  default     = ["${var.admin_ip}/32"]
 }

@@ -56,7 +56,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = var.allowed_ssh_ips # Restricted to your IP
+    cidr_blocks = ["${var.admin_ip}/32"]
   }
   
   # HTTP access - limited to web ports
