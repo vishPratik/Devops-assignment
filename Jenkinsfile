@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
+        AWS_ACCESS_KEY_ID = credentials('aws-credentials').username
+        AWS_SECRET_ACCESS_KEY = credentials('aws-credentials').password
         AWS_DEFAULT_REGION = 'us-east-1'
-        TF_IN_AUTOMATION   = 'true'
-        PATH = "/usr/local/bin:${env.PATH}"
     }
 
     options {
@@ -63,14 +63,10 @@ pipeline {
                 echo '🔍 Running Terraform security scan...'
                 dir('terraform') {
                     script {
-                        try {
-                            sh 'trivy config --severity HIGH,CRITICAL .'
-                            echo '✅ Security scan passed'
-                        } catch (Exception e) {
-                            echo '⚠️ Security issues detected'
-                            sh 'trivy config --format json --output trivy-report.json .'
-                            currentBuild.result = 'UNSTABLE'
-                        }
+                        // This should FAIL if vulnerabilities are found
+                        sh '''
+                            trivy config --severity HIGH,CRITICAL --exit-code 1 .
+                        '''
                     }
                 }
             }
@@ -100,6 +96,9 @@ pipeline {
 
 
         stage('Manual Approval') {
+             when {
+                expression { env.SKIP_DEPLOYMENT != 'true' }
+            }
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     input(
