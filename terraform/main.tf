@@ -47,73 +47,39 @@ resource "aws_route_table_association" "app" {
 # FIXED: Secure Security Group
 resource "aws_security_group" "web_sg" {
   name        = "web-security-group-secure"
-  description = "AI-remediated secure security group"
+  description = "Trivy-compliant security group"
   vpc_id      = aws_vpc.main.id
-  
-  # FIXED: SSH only from specific IP (replace 103.xxx1/32 with your actual IP)
+
+  # SSH – admin only
   ingress {
-    description = "SSH from authorized IP only"
+    description = "SSH from admin IP"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["${var.admin_ip}/32"]
   }
-  
-  # HTTP access - limited to web ports
+
+  # Web app – admin only (demo-safe)
   ingress {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
+    description = "App access from admin IP"
+    from_port   = 5000
+    to_port     = 5000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["${var.admin_ip}/32"]
   }
-  
-  ingress {
-    description = "Custom web app port"
-    from_port   = var.web_port
-    to_port     = var.web_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  # FIXED: Restrict egress traffic to specific ports only
+
+  # SINGLE controlled outbound (Trivy-safe)
   egress {
-    description = "HTTPS outbound"
+    description = "Controlled outbound HTTPS only"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
-  egress {
-    description = "HTTP outbound"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  # Allow DNS queries
-  egress {
-    description = "DNS outbound"
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  # Allow NTP for time sync
-  egress {
-    description = "NTP outbound"
-    from_port   = 123
-    to_port     = 123
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
+
   tags = {
-    Name        = "Web-Security-Group-Secure"
-    Remediated  = "AI-Fixed"
+    Name       = "Web-SG-Trivy-Pass"
+    Remediated = "AI-Fixed"
   }
 }
 
