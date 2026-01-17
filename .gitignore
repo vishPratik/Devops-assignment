@@ -33,7 +33,7 @@ __pycache__/
 
 # ---Terraform ---
 .terraform/
-terraform/
 *.tfstate
 *.exe
 *.zip
+.terraform.lock.hcl
