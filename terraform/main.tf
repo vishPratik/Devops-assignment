@@ -152,13 +152,9 @@ resource "aws_instance" "web_server" {
 }
 
 resource "aws_eip" "web_eip" {
-  instance = aws_instance.web_server.id
-  vpc      = true
-  
-  tags = {
-    Name = "WebServer-EIP"
-  }
+  domain = "vpc"
 }
+
 
 output "instance_id" {
   value = aws_instance.web_server.id

@@ -87,6 +87,9 @@ pipeline {
                     ]]) {
                         sh '''
                             set -e
+                            export AWS_DEFAULT_REGION=us-east-1
+                            export AWS_EC2_METADATA_DISABLED=true
+
                             terraform init
                             terraform plan -out=tfplan
                         '''
@@ -94,6 +97,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('Manual Approval') {
             steps {
@@ -118,6 +122,8 @@ pipeline {
                         sh '''
                             set -e
                             terraform apply -auto-approve tfplan
+                            export AWS_EC2_METADATA_DISABLED=true
+
                         '''
                     }
                 }
