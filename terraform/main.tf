@@ -46,8 +46,8 @@ resource "aws_route_table_association" "app" {
 
 # FIXED: Secure Security Group
 resource "aws_security_group" "web_sg" {
-  name        = "web-security-group-secure"
-  description = "Trivy-compliant security group"
+  name        = "web-security-group-trivy-pass"
+  description = "Strict security group to satisfy Trivy"
   vpc_id      = aws_vpc.main.id
 
   # SSH – admin only
@@ -59,7 +59,7 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["${var.admin_ip}/32"]
   }
 
-  # Web app – admin only (demo-safe)
+  # Application access – admin only
   ingress {
     description = "App access from admin IP"
     from_port   = 5000
@@ -68,20 +68,15 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["${var.admin_ip}/32"]
   }
 
-  # SINGLE controlled outbound (Trivy-safe)
-  egress {
-    description = "Controlled outbound HTTPS only"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # ❗ NO EGRESS RULES (this is the key)
+  # AWS allows response traffic automatically
 
   tags = {
     Name       = "Web-SG-Trivy-Pass"
     Remediated = "AI-Fixed"
   }
 }
+
 
 # FIXED: Secure EC2 Instance
 resource "aws_instance" "web_server" {
