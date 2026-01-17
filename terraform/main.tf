@@ -80,114 +80,45 @@ resource "aws_security_group" "web_sg" {
 
 # FIXED: Secure EC2 Instance
 resource "aws_instance" "web_server" {
-  ami                    = "ami-0c55b159cbfafe1f0"  # Ubuntu 20.04 LTS
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.app_subnet.id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-  
-  # FIXED: Enable encryption on root volume
-  root_block_device {
-    volume_size = 8
-    volume_type = "gp3"  # Better than gp2
-    encrypted   = true   # FIXED: Encryption enabled
-    
-    tags = {
-      Name      = "Root-Volume-Encrypted"
-      Encrypted = "true"
-    }
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = var.instance_type
+
+  network_interface {
+    network_interface_id = aws_network_interface.web_eni.id
+    device_index         = 0
   }
-  
-  # FIXED: Enable IMDSv2 with required tokens
+
   metadata_options {
     http_endpoint = "enabled"
-    http_tokens   = "required"  # FIXED: IMDSv2 tokens required
-    http_put_response_hop_limit = 2
+    http_tokens   = "required"
   }
-  
-  # FIXED: Disable detailed monitoring to reduce cost (optional)
-  monitoring = false
-  
-  # User data to install Docker and run our app
-  user_data = <<-EOF
-              #!/bin/bash
-              set -e
-              
-              # Update system
-              apt-get update
-              apt-get upgrade -y
-              
-              # Install Docker
-              apt-get install -y docker.io
-              systemctl start docker
-              systemctl enable docker
-              
-              # Create app directory
-              mkdir -p /app
-              cd /app
-              
-              # Create Dockerfile
-              cat > Dockerfile << 'DOCKERFILE'
-              FROM python:3.9-slim
-              WORKDIR /app
-              COPY requirements.txt .
-              RUN pip install Flask==2.3.3 gunicorn
-              COPY app.py .
-              CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
-              DOCKERFILE
-              
-              # Create requirements.txt
-              echo "Flask==2.3.3" > requirements.txt
-              echo "gunicorn==21.2.0" >> requirements.txt
-              
-              # Create app.py
-              cat > app.py << 'APP'
-              from flask import Flask
-              import socket
-              import os
-              
-              app = Flask(__name__)
-              
-              @app.route('/')
-              def home():
-                  hostname = socket.gethostname()
-                  return f'''
-                  <h1>✅ DevSecOps Assignment - SECURE VERSION</h1>
-                  <p>Running on: {hostname}</p>
-                  <p>Status: <strong style="color:green">Secure Deployment Active</strong></p>
-                  <p>Features: Encrypted volumes, Restricted SSH, IMDSv2 enabled</p>
-                  <p>AI Remediation Applied: {os.environ.get('AI_REMEDIATED', 'Yes')}</p>
-                  '''
-              
-              @app.route('/health')
-              def health():
-                  return {"status": "healthy", "version": "secure-v1.0", "remediated": "ai-fixed"}
-              
-              if __name__ == '__main__':
-                  app.run(host='0.0.0.0', port=5000)
-              APP
-              
-              # Build and run with restart policy
-              docker build -t devops-app-secure .
-              docker run -d \
-                -p 5000:5000 \
-                --name devops-app \
-                --restart unless-stopped \
-                -e AI_REMEDIATED="true" \
-                devops-app-secure
-              
-              echo "✅ Secure setup completed successfully!"
-              EOF
-  
+
+  root_block_device {
+    volume_size = 8
+    volume_type = "gp3"
+    encrypted   = true
+  }
+
+  user_data = file("user_data.sh")
+
   tags = {
-    Name        = "DevSecOps-WebServer-Secure"
-    Environment = "Production"
-    Encrypted   = "true"
-    IMDSv2      = "required"
-    Remediated  = "AI-Fixed"
+    Name = "DevSecOps-WebServer-Secure"
   }
-  
-  depends_on = [aws_internet_gateway.gw]
+
+  depends_on = [
+    aws_internet_gateway.gw
+  ]
 }
+
+resource "aws_network_interface" "web_eni" {
+  subnet_id       = aws_subnet.app_subnet.id
+  security_groups = [aws_security_group.web_sg.id]
+
+  tags = {
+    Name = "web-primary-eni"
+  }
+}
+
 
 # FIXED: Associate EIP with instance
 resource "aws_eip" "web_eip" {
@@ -199,8 +130,8 @@ resource "aws_eip" "web_eip" {
 }
 
 resource "aws_eip_association" "web_eip_assoc" {
-  instance_id   = aws_instance.web_server.id
-  allocation_id = aws_eip.web_eip.id
+  network_interface_id = aws_network_interface.web_eni.id
+  allocation_id        = aws_eip.web_eip.id
 }
 
 output "instance_id" {
