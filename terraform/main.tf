@@ -99,7 +99,46 @@ resource "aws_instance" "web_server" {
     encrypted   = true
   }
 
-  user_data = file("user_data.sh")
+  user_data = <<-EOF
+  #!/bin/bash
+  set -e
+
+  apt-get update -y
+  apt-get install -y docker.io
+  systemctl start docker
+  systemctl enable docker
+
+  mkdir -p /app
+  cd /app
+
+  cat > Dockerfile << 'DOCKERFILE'
+  FROM python:3.9-slim
+  WORKDIR /app
+  COPY requirements.txt .
+  RUN pip install Flask gunicorn
+  COPY app.py .
+  CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "app:app"]
+  DOCKERFILE
+
+  echo "Flask" > requirements.txt
+  echo "gunicorn" >> requirements.txt
+
+  cat > app.py << 'APP'
+  from flask import Flask
+  app = Flask(__name__)
+
+  @app.route("/")
+  def home():
+      return "DevSecOps Assignment – Secure Deployment"
+
+  if __name__ == "__main__":
+      app.run(host="0.0.0.0", port=5000)
+  APP
+
+  docker build -t devsecops-app .
+  docker run -d -p 5000:5000 --restart unless-stopped devsecops-app
+  EOF
+
 
   tags = {
     Name = "DevSecOps-WebServer-Secure"
