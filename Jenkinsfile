@@ -75,21 +75,17 @@ pipeline {
         stage('Terraform Init & Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-credentials',
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                    ]]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
-                            set -e
-                            export AWS_DEFAULT_REGION=us-east-1
-                            export AWS_EC2_METADATA_DISABLED=true
-
-                            terraform init
-                            terraform plan -out=tfplan
+                        export AWS_DEFAULT_REGION=us-east-1
+                        terraform init
+                        terraform plan -out=tfplan
                         '''
                     }
+
                 }
             }
         }
@@ -112,22 +108,20 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
-                    withCredentials([[
-                        $class: 'AWSStaticCredentialsProvider',
-                        credentialsId: 'aws-credentials',
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                    ]]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
-                            set -e
-                            terraform apply -auto-approve tfplan
-                            export AWS_EC2_METADATA_DISABLED=true
-
+                        set -e
+                        export AWS_DEFAULT_REGION=us-east-1
+                        terraform apply -auto-approve tfplan
                         '''
                     }
                 }
             }
         }
+
 
         stage('Verify Deployment') {
             steps {
