@@ -1,73 +1,84 @@
-// Jenkinsfile
 pipeline {
     agent any
-    
+
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
-        TF_IN_AUTOMATION = 'true'
+        TF_IN_AUTOMATION   = 'true'
+        PATH = "/usr/local/bin:${env.PATH}"
     }
-    
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 echo '📦 Checking out source code...'
-                git branch: 'main', 
-                    url: 'https://github.com/vishPratik/Devops-assignment.git' 
+                checkout scm
                 sh 'ls -la'
             }
         }
-        
+
         stage('Install Tools') {
             steps {
                 script {
                     sh '''
-                        echo "Updating and installing prerequisites..."
-                        apt-get update && apt-get install -y unzip curl gnupg
-                        
-                        echo "Installing Terraform..."
-                        curl -L -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                        unzip -o terraform.zip
-                        mv terraform /usr/local/bin/
-                        
-                        echo "Installing Trivy..."
-                        curl -sfL --connect-timeout 30 --retry 5 https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
-                        
-                        echo "Verifying Installations..."
+                        set -e
+
+                        echo "🔧 Installing prerequisites..."
+                        apt-get update -y
+                        apt-get install -y unzip curl gnupg
+
+                        if ! command -v terraform >/dev/null 2>&1; then
+                          echo "⬇️ Installing Terraform..."
+                          curl -L -o /tmp/terraform.zip \
+                            https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                          unzip -o /tmp/terraform.zip -d /usr/local/bin
+                          chmod +x /usr/local/bin/terraform
+                        else
+                          echo "✔ Terraform already installed"
+                        fi
+
+                        if ! command -v trivy >/dev/null 2>&1; then
+                          echo "⬇️ Installing Trivy..."
+                          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+                            | sh -s -- -b /usr/local/bin v0.49.1
+                        else
+                          echo "✔ Trivy already installed"
+                        fi
+
+                        echo "🔍 Verifying tool versions..."
                         terraform -version
                         trivy --version
                     '''
                 }
             }
         }
-        
+
         stage('Security Scan - Terraform') {
             steps {
-                echo '🔍 Scanning Terraform for security vulnerabilities...'
-                dir('.') {
+                echo '🔍 Running Terraform security scan...'
+                dir('terraform') {
                     script {
                         try {
-                            // Scan with Trivy
                             sh 'trivy config --severity HIGH,CRITICAL .'
-                            echo '✅ Security scan passed!'
+                            echo '✅ Security scan passed'
                         } catch (Exception e) {
-                            echo '❌ Security scan failed with vulnerabilities!'
-                            echo '📋 Vulnerability report saved for AI analysis'
-                            
-                            // Save detailed report
+                            echo '⚠️ Security issues detected'
                             sh 'trivy config --format json --output trivy-report.json .'
-                            sh 'cat trivy-report.json'
-                            
-                            // Continue anyway for demo, but mark as unstable
                             currentBuild.result = 'UNSTABLE'
                         }
                     }
                 }
             }
         }
-        
-        stage('Terraform Plan') {
+
+        stage('Terraform Init & Plan') {
             steps {
-                dir('.') {
+                dir('terraform') {
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding',
                         credentialsId: 'aws-credentials',
@@ -75,7 +86,7 @@ pipeline {
                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                     ]]) {
                         sh '''
-                            export AWS_DEFAULT_REGION=us-east-1
+                            set -e
                             terraform init
                             terraform plan -out=tfplan
                         '''
@@ -84,58 +95,53 @@ pipeline {
             }
         }
 
-        
         stage('Manual Approval') {
             steps {
-                echo '⏳ Waiting for manual approval...'
-                script {
-                    timeout(time: 5, unit: 'MINUTES') {
-                        input(
-                            message: 'Do you want to apply Terraform?',
-                            ok: 'Apply Infrastructure'
-                        )
-                    }
+                timeout(time: 5, unit: 'MINUTES') {
+                    input(
+                        message: 'Do you want to apply Terraform?',
+                        ok: 'Apply Infrastructure'
+                    )
                 }
             }
         }
-        
+
         stage('Terraform Apply') {
             steps {
-                echo '🚀 Applying Terraform...'
-                dir('.') {
+                dir('terraform') {
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding',
                         credentialsId: 'aws-credentials',
                         accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                     ]]) {
-                        sh 'terraform apply -auto-approve tfplan'
+                        sh '''
+                            set -e
+                            terraform apply -auto-approve tfplan
+                        '''
                     }
                 }
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
-                echo '✅ Verifying deployment...'
-                script {
-                    // Get public IP from Terraform output
-                    dir('.') {
-                        sh 'terraform output public_ip > ip.txt'
-                        def public_ip = readFile('ip.txt').trim()
-                        
-                        echo "🌐 Web app should be available at: http://${public_ip}:5000"
-                        
-                        // Wait for app to be ready
+                dir('terraform') {
+                    script {
+                        sh 'terraform output -raw public_ip > ip.txt'
+                        def publicIp = readFile('ip.txt').trim()
+
+                        echo "🌐 Application URL: http://${publicIp}:5000"
+
                         sh """
                             for i in {1..30}; do
-                                if curl -s -f http://${public_ip}:5000/health; then
-                                    echo "✅ Application is healthy!"
-                                    exit 0
-                                fi
-                                sleep 5
+                              if curl -sf http://${publicIp}:5000/health; then
+                                echo "✅ Application is healthy"
+                                exit 0
+                              fi
+                              sleep 5
                             done
-                            echo "❌ Application not responding"
+                            echo "❌ Application did not become healthy"
                             exit 1
                         """
                     }
@@ -143,20 +149,20 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
-            echo '🧹 Cleaning up workspace...'
+            echo '🧹 Cleaning workspace'
             cleanWs()
         }
         success {
-            echo '🎉 Pipeline completed successfully!'
-        }
-        failure {
-            echo '❌ Pipeline failed!'
+            echo '🎉 Pipeline completed successfully'
         }
         unstable {
-            echo '⚠️ Pipeline completed with vulnerabilities!'
+            echo '⚠️ Pipeline completed with security warnings'
+        }
+        failure {
+            echo '❌ Pipeline failed'
         }
     }
 }
