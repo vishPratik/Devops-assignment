@@ -67,17 +67,15 @@ pipeline {
         
         stage('Terraform Plan') {
             steps {
-                // Ensure we are in the root directory where main.tf lives
-                dir('.') { 
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
+                dir('.') {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-credentials',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
                         sh '''
-                            export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-                            export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-                            export AWS_DEFAULT_REGION="us-east-1"
-                            
+                            export AWS_DEFAULT_REGION=us-east-1
                             terraform init
                             terraform plan -out=tfplan
                         '''
@@ -85,6 +83,7 @@ pipeline {
                 }
             }
         }
+
         
         stage('Manual Approval') {
             steps {
