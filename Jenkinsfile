@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-credentials').username
-        AWS_SECRET_ACCESS_KEY = credentials('aws-credentials').password
         AWS_DEFAULT_REGION = 'us-east-1'
+        TF_IN_AUTOMATION   = 'true'
+        PATH = "/usr/local/bin:${env.PATH}"
     }
 
     options {
@@ -113,7 +113,7 @@ pipeline {
             steps {
                 dir('terraform') {
                     withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
+                        $class: 'AWSStaticCredentialsProvider',
                         credentialsId: 'aws-credentials',
                         accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
